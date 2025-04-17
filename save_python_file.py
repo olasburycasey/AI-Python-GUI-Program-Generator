@@ -15,7 +15,7 @@ def save_file(generated_code_file):
             print("Invalid file name. Please use only letters, numbers, underscores, hyphens, or periods.")
             continue
 
-        file_path = f"saved_files/{destination_file_name}.py"
+        file_path = f"saved_programs/{destination_file_name}.py"
 
         # Check if file exists
         if os.path.exists(file_path):

@@ -34,7 +34,7 @@ def write_code_to_file(file_name, response_text):
 
 def add_features(file_name, model):
     while True:
-        features_to_add = input("What features would you like to add or make to the program?"
+        features_to_add = input("What features would you like to add or make to the program?\n"
                                 "Or type 'none' to quit: ")
 
         if features_to_add.upper() == "NONE":
