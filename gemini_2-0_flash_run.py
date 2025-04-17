@@ -67,7 +67,11 @@ def generate_code_and_file():
     gui_features.write_code_to_file("generated_code.py", response_text)
 
     # Now run the generated code
-    subprocess.run([sys.executable, "generated_code.py"])
+    try:
+        subprocess.run([sys.executable, "generated_code.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Error running the generated script: {e}")
+        return  # or handle appropriately
 
     gui_features.add_features("generated_code.py", model)
 

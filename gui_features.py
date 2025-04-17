@@ -8,6 +8,10 @@ import google.generativeai as genai
 def write_code_to_file(file_name, response_text):
     if os.path.exists("generated_code.py"):
         os.remove("generated_code.py")
+    # list of prohibited libraries that should not be used at all
+    prohibited_libraries = ["os", "sys", "subprocess", "shutil", "socket", "requests", "http.client", "urllib", "ftplib",
+                            "ctypes", "cffi", "pickle", "eval", "exec", "compile", "multiprocessing", "threading",
+                            "pathlib", "glob"]
 
     # Write each line of the response text to a file
     with open(file_name, "w") as file:
@@ -17,6 +21,9 @@ def write_code_to_file(file_name, response_text):
             if len(split_line) > 0 and split_line[0] == "import":
                 # Check if the module is a third-party package
                 module_name = split_line[1]
+                if module_name in prohibited_libraries:
+                    print("Error: Access to other files is prohibited. Exiting program")
+                    quit(0)
                 try:
                     # Attempt to import the module to check if it's installed
                     __import__(module_name)
@@ -27,7 +34,10 @@ def write_code_to_file(file_name, response_text):
             if line == "```":
                 break
             if is_python_code:
-                file.write(line + '\n')
+                try:
+                    file.write(line + '\n')
+                except Exception as e:
+                    print(f"Error writing line to file: {e}")
 
         file.close()
 
