@@ -21,9 +21,10 @@ def write_code_to_file(file_name, response_text):
             if len(split_line) > 0 and split_line[0] == "import":
                 # Check if the module is a third-party package
                 module_name = split_line[1]
-                if module_name in prohibited_libraries:
+                if module_name.lower() in prohibited_libraries:
                     print("Error: Access to other files is prohibited. Exiting program")
                     quit(0)
+                    break
                 try:
                     # Attempt to import the module to check if it's installed
                     __import__(module_name)

@@ -69,11 +69,10 @@ def generate_code_and_file():
     # Now run the generated code
     try:
         subprocess.run([sys.executable, "generated_code.py"], check=True)
+        gui_features.add_features("generated_code.py", model)
     except subprocess.CalledProcessError as e:
         print(f"\n❌ Error running the generated script: {e}")
         return  # or handle appropriately
-
-    gui_features.add_features("generated_code.py", model)
 
 
 def run_existing_path():
@@ -93,24 +92,36 @@ def run_existing_path():
         print(f"{idx}. {file}")
 
     # Prompt the user to select a file to run
-    choice = int(input("Which file would you like to run? Enter the number: ")) - 1
+    choice = input("Which file would you like to run? Enter the name or number: ").strip()
 
-    if 0 <= choice < len(python_files):
-        file_to_run = python_files[choice]
-        print(f"Running {file_to_run}...")
+    try:
+        # Try to interpret the choice as a number
+        index = int(choice) - 1
+        if 0 <= index < len(python_files):
+            file_to_run = python_files[index]
+        else:
+            print("Invalid number choice. Please try again.")
+            return
+    except ValueError:
+        # If not a number, treat it as a filename
+        if choice in python_files:
+            file_to_run = choice
+        else:
+            print("Invalid filename. Please try again.")
+            return
 
-        # Full path to the selected file
-        file_path = os.path.join(directory, file_to_run)
+    print(f"Running {file_to_run}...")
 
-        # Using subprocess to run the file
-        subprocess.run([sys.executable, file_path])
+    # Full path to the selected file
+    file_path = os.path.join(directory, file_to_run)
 
-        gui_features.add_features(file_path, model)
+    # Using subprocess to run the file
+    subprocess.run([sys.executable, file_path])
 
-        print(f"Features automatically saved to {file_path}")
+    # After running, add GUI features (assuming gui_features and model are available)
+    gui_features.add_features(file_path, model)
 
-    else:
-        print("Invalid choice. Please try again.")
+    print(f"Features automatically saved to {file_path}")
 
 
 def save_file():
