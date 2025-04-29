@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, Canvas
 from PIL import Image, ImageTk  # Use Pillow instead of PIL
+import random
 
 
 class SchoolImageGenerator:
@@ -20,6 +21,12 @@ class SchoolImageGenerator:
 
         # Clear the canvas (important for redrawing if needed)
         self.canvas.delete("all")
+
+        # Sky
+        self.canvas.create_rectangle(0, 0, self.canvas_width, self.canvas_height, fill="skyblue", outline="")
+
+        # Draw Clouds
+        self.draw_clouds(num_clouds=5)  # Added clouds
 
         # 1. Building (Main Structure)
         building_width = 400
@@ -80,6 +87,23 @@ class SchoolImageGenerator:
         sun_x = 50
         sun_y = 50
         self.canvas.create_oval(sun_x - sun_size // 2, sun_y - sun_size // 2, sun_x + sun_size // 2, sun_y + sun_size // 2, fill="yellow", outline="orange")
+
+    def draw_clouds(self, num_clouds=3):
+        """Draws clouds randomly in the sky."""
+        for _ in range(num_clouds):
+            cloud_x = random.randint(50, self.canvas_width - 50)
+            cloud_y = random.randint(20, self.canvas_height // 3)  # Keep clouds in the upper portion
+            cloud_size = random.randint(30, 60)
+            cloud_color = "white"  # You can vary cloud colors slightly
+            self.draw_cloud(cloud_x, cloud_y, cloud_size, cloud_color)
+
+
+    def draw_cloud(self, x, y, size, color):
+      """Draws a single cloud using overlapping circles."""
+      for i in range(-1, 2):
+          for j in range(-1, 2):
+              if (i, j) != (0,0) :
+                 self.canvas.create_oval(x + i*size//3 - size // 2, y + j*size//3 - size // 2, x + i*size//3 + size // 2, y + j*size//3 + size // 2, fill=color, outline=color)
 
 
 

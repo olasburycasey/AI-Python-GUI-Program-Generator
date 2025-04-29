@@ -1,46 +1,48 @@
-import os
 import subprocess
 import sys
 
 import google.generativeai as genai
 
 
-def write_code_to_file(file_name, response_text):
-    if os.path.exists("generated_code.py"):
-        os.remove("generated_code.py")
-    # list of prohibited libraries that should not be used at all
-    prohibited_libraries = ["os", "sys", "subprocess", "shutil", "socket", "requests", "http.client", "urllib", "ftplib",
-                            "ctypes", "cffi", "pickle", "eval", "exec", "compile", "multiprocessing", "threading",
-                            "pathlib", "glob"]
+def write_code_to_file(file_name, code):
+    with open(file_name, "w", encoding="utf-8") as file:
+        file.write(code)
 
-    # Write each line of the response text to a file
-    with open(file_name, "w") as file:
-        is_python_code = False
-        for line in response_text.splitlines():
+
+def clean_up_response(response_text: str) -> str:
+    prohibited_libraries = {"os", "sys", "subprocess", "shutil", "socket", "requests", "http.client", "urllib",
+                            "ftplib", "ctypes", "cffi", "pickle", "eval", "exec", "compile",
+                            "multiprocessing", "threading", "pathlib", "glob"}
+
+    python_code_lines = []
+    is_python_code = False
+
+    for line in response_text.splitlines():
+
+        # Start extracting code after triple backticks
+        if line.startswith("```python") or line.startswith("```py"):
+            is_python_code = True
+            continue
+        elif line.startswith("```") and is_python_code:
+            break  # End of code block
+
+        if is_python_code:
+            # Check for prohibited libraries
             split_line = line.split()
-            if len(split_line) > 0 and split_line[0] == "import":
-                # Check if the module is a third-party package
+            if len(split_line) >= 2 and split_line[0] == "import":
                 module_name = split_line[1]
-                if module_name.lower() in prohibited_libraries:
-                    print("Error: Access to other files is prohibited. Exiting program")
-                    quit(0)
-                    break
-                try:
-                    # Attempt to import the module to check if it's installed
-                    __import__(module_name)
-                except ImportError:
-                    # If the module is not installed, install it
-                    subprocess.run([sys.executable, "-m", "pip", "install", module_name])
-                is_python_code = True
-            if line == "```":
-                break
-            if is_python_code:
-                try:
-                    file.write(line + '\n')
-                except Exception as e:
-                    print(f"Error writing line to file: {e}")
+                if module_name.split('.')[0] in prohibited_libraries:
+                    raise ValueError(f"Error: Use of prohibited module '{module_name}' detected.")
 
-        file.close()
+            if len(split_line) >= 4 and split_line[0] == "from" and split_line[2] == "import":
+                module_name = split_line[1]
+                if module_name.split('.')[0] in prohibited_libraries:
+                    raise ValueError(f"Error: Use of prohibited module '{module_name}' detected.")
+
+            python_code_lines.append(line)
+
+    # Return the cleaned-up Python code as a single string
+    return "\n".join(python_code_lines)
 
 
 def add_features(file_name, model):
@@ -70,7 +72,15 @@ def add_new_features_and_run(model: genai, file_name, features):
     response = model.generate_content(prompt)
     response_text = response.text
 
-    write_code_to_file(file_name, response_text)
+    print(response_text)
+    clean_response = clean_up_response(response_text)
+    print("---CLEAN CODE---")
+    print(clean_response)
 
-    # Now run the generated code
-    subprocess.run([sys.executable, file_name])
+    confirmation = input("\nDo you want to run this newly generated code? (yes/no): ").lower()
+    if confirmation == 'yes':
+        write_code_to_file(file_name, clean_response)
+        print(f"Running {file_name} safely in a subprocess...")
+        subprocess.run([sys.executable, file_name])
+    else:
+        print("Skipping execution.")
