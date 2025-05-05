@@ -11,9 +11,9 @@ def write_code_to_file(file_name, code):
 
 
 def clean_up_response(response_text: str) -> str:
-    prohibited_libraries = {"os", "sys", "subprocess", "shutil", "socket", "requests", "http.client", "urllib",
+    '''prohibited_libraries = {"os", "sys", "subprocess", "shutil", "socket", "requests", "http.client", "urllib",
                             "ftplib", "ctypes", "cffi", "pickle", "eval", "exec", "compile",
-                            "multiprocessing", "threading", "pathlib", "glob"}
+                            "multiprocessing", "threading", "pathlib", "glob"}'''
 
     python_code_lines = []
     is_python_code = False
@@ -28,9 +28,9 @@ def clean_up_response(response_text: str) -> str:
             break  # End of code block
 
         if is_python_code:
-            # Check for prohibited libraries
+            '''# Check for prohibited libraries
             split_line = line.split()
-            '''if len(split_line) >= 2 and split_line[0] == "import":
+            if len(split_line) >= 2 and split_line[0] == "import":
                 module_name = split_line[1]
                 if module_name.split('.')[0] in prohibited_libraries:
                     raise ValueError(f"Error: Use of prohibited module '{module_name}' detected.")

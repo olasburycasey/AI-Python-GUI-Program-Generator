@@ -5,6 +5,8 @@ import os
 import gui_features
 import save_python_file
 from safe_code_scanner import SafeCodeScanner
+import os
+from datetime import datetime
 
 with open("API_KEY", "r") as f:
     api_key = f.read()
@@ -83,13 +85,18 @@ def generate_code_and_file():
     response = model.generate_content(prompt)
     response_text = response.text.strip()
 
-    # READ CODE
     print("\nGenerated code preview:\n")
     print(response_text)
 
-    # clean up response to only code
+    # Clean up response to extract only the code
     code = gui_features.clean_up_response(response_text)
-    print("\n\n---CODE---")
+    print("\n\n---RAW CODE---")
+    print(code)
+
+    # Fix common errors and make it more robust
+    code = attempt_to_fix_code(code)
+
+    print("\n\n---FIXED CODE---")
     print(code)
 
     if code:
@@ -113,6 +120,18 @@ def generate_code_and_file():
 
         gui_features.add_features(generated_filename, model)
         save_file_function()
+
+
+def attempt_to_fix_code(raw_code: str) -> str:
+    """
+    Use the model to review and correct the code for syntax or runtime issues.
+    """
+    fix_prompt = f"The following Python GUI code may contain errors or unsafe behavior. Please fix any syntax errors," \
+                 f"runtime issues, and add appropriate exception handling. Ensure the program won't crash." \
+                 f"\n\n{raw_code}"
+    response = model.generate_content(fix_prompt)
+    clean_code = gui_features.clean_up_response(response.text)
+    return clean_code
 
 
 def scan_code(code: str) -> str:
@@ -209,43 +228,63 @@ def give_feedback():
     for idx, file in enumerate(python_files, 1):
         print(f"{idx}. {file}")
 
-    # Prompt the user to select a file to run
-    choice = input("Which file would you like me to provide feedback to? Enter the name or number: ").strip()
+    # Prompt the user to select a file
+    choice = input("Which file would you like me to provide feedback on? Enter the name or number: ").strip()
 
     try:
-        # Try to interpret the choice as a number
         index = int(choice) - 1
         if 0 <= index < len(python_files):
             file_to_run = python_files[index]
         else:
-            print("Invalid number choice. Please try again.")
+            print("Invalid number choice.")
             return
     except ValueError:
-        # If not a number, treat it as a filename
         if choice in python_files:
             file_to_run = choice
         else:
-            print("Invalid filename. Please try again.")
+            print("Invalid filename.")
             return
 
     print(f"Rating {file_to_run}...")
 
-    # Full path to the selected file
     file_path = os.path.join(directory, file_to_run)
 
     with open(file_path, "r") as file:
         full_code = file.read()
 
     prompt = f"{full_code}\n\n" \
-             f"Can you provide me some feedback on this code?\n" \
-             f"Can you also rate this on a scale of 1-10 " \
-             f"with 1 being awful and 10 being awesome."
+             f"Can you provide some feedback on this code?\n" \
+             f"Rate it on a scale from 1 to 10, with 10 being excellent.\n" \
+             f"Then, improve the code and make it a 10/10 version."
 
     response = model.generate_content(prompt)
     response_text = response.text
 
-    print("--- MODEL RESPONSE: ---")
+    print("\n--- MODEL RESPONSE ---\n")
     print(response_text)
+
+    # Extract new code from response (if any)
+    new_code = gui_features.clean_up_response(response_text)
+
+    if new_code:
+        print("\n--- UPDATED CODE SUGGESTION ---\n")
+        print(new_code)
+
+        save_choice = input("\nWould you like to save the improved version? (y/n): ").strip().lower()
+        if save_choice == 'y':
+            base_name = os.path.splitext(file_to_run)[0]
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            new_filename = f"{base_name}_improved_{timestamp}.py"
+            new_file_path = os.path.join(directory, new_filename)
+
+            with open(new_file_path, "w") as f:
+                f.write(new_code)
+
+            print(f"Improved code saved to {new_file_path}")
+        else:
+            print("Improved code not saved.")
+    else:
+        print("No updated code found in the model's response.")
 
 
 if __name__ == "__main__":
