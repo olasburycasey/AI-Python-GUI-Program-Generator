@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from safe_code_scanner import SafeCodeScanner
 
 import google.generativeai as genai
 
@@ -29,7 +30,7 @@ def clean_up_response(response_text: str) -> str:
         if is_python_code:
             # Check for prohibited libraries
             split_line = line.split()
-            if len(split_line) >= 2 and split_line[0] == "import":
+            '''if len(split_line) >= 2 and split_line[0] == "import":
                 module_name = split_line[1]
                 if module_name.split('.')[0] in prohibited_libraries:
                     raise ValueError(f"Error: Use of prohibited module '{module_name}' detected.")
@@ -37,7 +38,7 @@ def clean_up_response(response_text: str) -> str:
             if len(split_line) >= 4 and split_line[0] == "from" and split_line[2] == "import":
                 module_name = split_line[1]
                 if module_name.split('.')[0] in prohibited_libraries:
-                    raise ValueError(f"Error: Use of prohibited module '{module_name}' detected.")
+                    raise ValueError(f"Error: Use of prohibited module '{module_name}' detected.")'''
 
             python_code_lines.append(line)
 
@@ -49,14 +50,13 @@ def add_features(file_name, model):
     while True:
         features_to_add = input("What features would you like to add or make to the program?\n"
                                 "Or type 'none' to quit: ")
-
         if features_to_add.upper() == "NONE":
             break  # Exit the loop when the user types 'none'
         else:
             add_new_features_and_run(model, file_name, features_to_add)
 
 
-def add_new_features_and_run(model: genai, file_name, features):
+def add_new_features_and_run(model, file_name, features):
     with open("API_KEY", "r") as f:
         api_key = f.read()
     genai.configure(api_key=api_key)
@@ -77,10 +77,22 @@ def add_new_features_and_run(model: genai, file_name, features):
     print("---CLEAN CODE---")
     print(clean_response)
 
-    confirmation = input("\nDo you want to run this newly generated code? (yes/no): ").lower()
-    if confirmation == 'yes':
-        write_code_to_file(file_name, clean_response)
-        print(f"Running {file_name} safely in a subprocess...")
-        subprocess.run([sys.executable, file_name])
+    if clean_response != "":
+        confirmation = input("\nDo you want to run this newly generated code? (yes/no): ").lower()
+        if confirmation == 'yes':
+            write_code_to_file(file_name, clean_response)
+            print(f"Running {file_name} safely in a subprocess...")
+            run_if_safe(file_name)
+        else:
+            print("Skipping execution.")
     else:
-        print("Skipping execution.")
+        print("Error updating code.")
+
+
+def run_if_safe(file_path):
+    scanner = SafeCodeScanner(file_path)
+    if scanner.scan():
+        print("✅ Code appears safe. Running...")
+        subprocess.run([sys.executable, file_path])
+    else:
+        print("🚫 Execution blocked: Unsafe code detected.")

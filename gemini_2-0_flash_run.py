@@ -4,6 +4,7 @@ import google.generativeai as genai
 import os
 import gui_features
 import save_python_file
+from safe_code_scanner import SafeCodeScanner
 
 with open("API_KEY", "r") as f:
     api_key = f.read()
@@ -24,29 +25,39 @@ model = genai.GenerativeModel('gemini-2.0-flash')
 
 
 def main():
-    print("Hello user. What would you like to do?\n"
-          "\t1. Create a new LLM generated python GUI program\n"
-          "\t2. Run existing LLM generated GUI program\n"
-          "\t3. Give feedback on LLM generated python code\n"
-          "\t4. quit")
-    choice = input("\tEnter here: ")
-    initiate_program(choice)
+    while True:
+        print("Welcome to the Python GUI program generator application.\n\n"
+              "What would you like to do?\n"
+              "\t1. Create a new LLM generated python GUI program\n"
+              "\t2. Run existing LLM generated GUI program\n"
+              "\t3. Give feedback on LLM generated python GUI program\n"
+              "\t4. quit")
+        choice = input("\tEnter here: ")
+        if choice == "4":
+            print("Thanks for using this program.")
+            break
+        else:
+            initiate_program(choice)
 
 
 def initiate_program(choice: str):
     if choice == "1":
         generate_code_and_file()
-        save_file_function()
     elif choice == "2":
         run_existing_path()
+    elif choice == "3":
+        give_feedback()
+    else:
+        print(f"Error: Not a valid option {choice}")
 
 
 def generate_code_and_file():
-    print("\nWhat type of GUI program would you like to run?"
+    print("\nWhat type of GUI program would you like me to generate?"
           "\n\t1. An image display"
           "\n\t2. A video game"
           "\n\t3. Some other application"
-          "\n\t4. quit")
+          "\n\t4. Go to the homescreen"
+          "\n\t5. quit")
     gui_type = input("Enter here: ")
 
     if gui_type == "1":
@@ -62,8 +73,10 @@ def generate_code_and_file():
         application = input("\nDescribe the application you want to generate: ")
         prompt = f"Write a Python tkinter GUI application with the description: {application}." \
                  f"Do not make the program access other files or directories. Try to make it secure."
+    elif gui_type == "4":
+        return
     else:
-        print("Goodbye!")
+        print("Error: Not a valid option. Returning to home-screen.")
         return
 
     # Generate content
@@ -79,35 +92,41 @@ def generate_code_and_file():
     print("\n\n---CODE---")
     print(code)
 
-    # scan code to make sure it does not cause problems
-    update_code = scan_code(code)
-    print("---UPDATED CODE---")
-    print(update_code)
+    if code:
+        update_code = scan_code(code)
+        if not update_code:
+            print("Code rejected due to safety concerns.")
+            return
 
-    # Save code to a temporary file
-    generated_filename = "generated_code.py"
-    gui_features.write_code_to_file(generated_filename, update_code)
+        print("---UPDATED CODE---")
+        print(update_code)
 
-    confirmation = input("\nDo you want to run this generated code? (yes/no): ").lower()
-    if confirmation == 'yes':
-        print(f"Running {generated_filename} safely in a subprocess...")
-        subprocess.run([sys.executable, generated_filename])
+        generated_filename = "generated_code.py"
+        gui_features.write_code_to_file(generated_filename, update_code)
+
+        confirmation = input("\nDo you want to run this generated code? (yes/no): ").lower()
+        if confirmation == 'yes':
+            print(f"Running {generated_filename} safely in a subprocess...")
+            subprocess.run([sys.executable, generated_filename])
+        else:
+            print("Skipping execution.")
+
+        gui_features.add_features(generated_filename, model)
+        save_file_function()
+
+
+def scan_code(code: str) -> str:
+    """
+    Scans code for safety. Returns the same code if safe.
+    If unsafe, returns an empty string and prints why.
+    """
+    scanner = SafeCodeScanner("dummy_path")  # we only use scan_source here
+    is_safe = scanner.scan_source(code)
+    if is_safe:
+        return code
     else:
-        print("Skipping execution.")
-
-    gui_features.add_features(generated_filename, model)
-
-
-def scan_code(response_code):
-    prompt = f"can you scan this code to make sure it has no errors and does not access other files or directories?:" \
-             f"\n\n{response_code}"
-    new_response = model.generate_content(prompt)
-    response_text = new_response.text.strip()
-    new_code = gui_features.clean_up_response(response_text)
-    if new_code == "":
-        return response_code
-    else:
-        return new_code
+        print("🚫 Unsafe code detected. Aborting write and run.")
+        return ""
 
 
 def save_file_function():
@@ -166,12 +185,67 @@ def run_existing_path():
     file_path = os.path.join(directory, file_to_run)
 
     # Using subprocess to run the file
-    subprocess.run([sys.executable, file_path])
+    gui_features.run_if_safe(file_path)
 
     # After running, add GUI features (assuming gui_features and model are available)
     gui_features.add_features(file_path, model)
 
     print(f"Features automatically saved to {file_path}")
+
+
+def give_feedback():
+    # Path to the saved_programs directory
+    directory = 'saved_programs'
+
+    print("Let's give a file some feedback.")
+    python_files = [file for file in os.listdir(directory) if file.endswith('.py')]
+
+    if not python_files:
+        print("No Python files found in the directory.")
+        return
+
+    # Display available Python files to the user
+    print("Available Python files:")
+    for idx, file in enumerate(python_files, 1):
+        print(f"{idx}. {file}")
+
+    # Prompt the user to select a file to run
+    choice = input("Which file would you like me to provide feedback to? Enter the name or number: ").strip()
+
+    try:
+        # Try to interpret the choice as a number
+        index = int(choice) - 1
+        if 0 <= index < len(python_files):
+            file_to_run = python_files[index]
+        else:
+            print("Invalid number choice. Please try again.")
+            return
+    except ValueError:
+        # If not a number, treat it as a filename
+        if choice in python_files:
+            file_to_run = choice
+        else:
+            print("Invalid filename. Please try again.")
+            return
+
+    print(f"Rating {file_to_run}...")
+
+    # Full path to the selected file
+    file_path = os.path.join(directory, file_to_run)
+
+    with open(file_path, "r") as file:
+        full_code = file.read()
+
+    prompt = f"{full_code}\n\n" \
+             f"Can you provide me some feedback on this code?\n" \
+             f"Can you also rate this on a scale of 1-10 " \
+             f"with 1 being awful and 10 being awesome."
+
+    response = model.generate_content(prompt)
+    response_text = response.text
+
+    print("--- MODEL RESPONSE: ---")
+    print(response_text)
 
 
 if __name__ == "__main__":
