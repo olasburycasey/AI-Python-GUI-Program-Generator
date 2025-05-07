@@ -1,7 +1,9 @@
+import re
 import subprocess
 import sys
 import google.generativeai as genai
-import os
+
+import game_agent
 import gui_features
 import save_python_file
 from safe_code_scanner import SafeCodeScanner
@@ -69,7 +71,8 @@ def generate_code_and_file():
                  f"Do not look for images on the web or locally. Just draw them."
     elif gui_type == "2":
         game = input("\nWhat game would you like to generate?: ")
-        prompt = f"Write a Python GUI program of the game {game}." \
+        game_type = game_agent.get_game_type(model, game)
+        prompt = f"Write a Python GUI program of the game {game}. Using the version {game_type}" \
                  f"Do not make the program access other files or directories."
     elif gui_type == "3":
         application = input("\nDescribe the application you want to generate: ")
@@ -85,19 +88,19 @@ def generate_code_and_file():
     response = model.generate_content(prompt)
     response_text = response.text.strip()
 
-    print("\nGenerated code preview:\n")
-    print(response_text)
+    '''print("\nGenerated code preview:\n")
+    print(response_text)'''
 
     # Clean up response to extract only the code
     code = gui_features.clean_up_response(response_text)
-    print("\n\n---RAW CODE---")
-    print(code)
+    '''print("\n\n---RAW CODE---")
+    print(code)'''
 
     # Fix common errors and make it more robust
     code = attempt_to_fix_code(code)
 
-    print("\n\n---FIXED CODE---")
-    print(code)
+    '''print("\n\n---FIXED CODE---")
+    print(code)'''
 
     if code:
         update_code = scan_code(code)
@@ -105,12 +108,13 @@ def generate_code_and_file():
             print("Code rejected due to safety concerns.")
             return
 
-        print("---UPDATED CODE---")
-        print(update_code)
+        '''print("---UPDATED CODE---")
+        print(update_code)'''
 
         generated_filename = "generated_code.py"
         gui_features.write_code_to_file(generated_filename, update_code)
 
+        print("Code scanned and is deemed safe.")
         confirmation = input("\nDo you want to run this generated code? (yes/no): ").lower()
         if confirmation == 'yes':
             print(f"Running {generated_filename} safely in a subprocess...")
@@ -150,17 +154,17 @@ def scan_code(code: str) -> str:
 
 def save_file_function():
     while True:
-        save_file_option = input("\nWould you like to save the code permanently? (Y/N): ").strip().upper()
-        if save_file_option == "Y":
+        save_file_option = input("\nWould you like to save the code permanently? (yes/no): ").strip().lower()
+        if save_file_option == "yes":
             save_python_file.save_file("generated_code.py")
             break
-        elif save_file_option == "N":
+        elif save_file_option == "no":
             if os.path.exists("generated_code.py"):
                 os.remove("generated_code.py")
                 print("Temporary file deleted.")
             break
         else:
-            print("Error: Not a valid option. Please enter Y or N.")
+            print("Error: Not a valid option. Please enter yes or no.")
 
 
 def run_existing_path():
@@ -180,36 +184,41 @@ def run_existing_path():
         print(f"{idx}. {file}")
 
     # Prompt the user to select a file to run
-    choice = input("Which file would you like to run? Enter the name or number: ").strip()
+    choice = input("Which file would you like to run?\nEnter the name or number, q to quit, or h to go to homescreen: ").strip()
 
-    try:
-        # Try to interpret the choice as a number
-        index = int(choice) - 1
-        if 0 <= index < len(python_files):
-            file_to_run = python_files[index]
-        else:
-            print("Invalid number choice. Please try again.")
-            return
-    except ValueError:
-        # If not a number, treat it as a filename
-        if choice in python_files:
-            file_to_run = choice
-        else:
-            print("Invalid filename. Please try again.")
-            return
+    if choice.lower() == "q":
+        quit(1)
+    elif choice.lower() == "h":
+        return
+    else:
+        try:
+            # Try to interpret the choice as a number
+            index = int(choice) - 1
+            if 0 <= index < len(python_files):
+                file_to_run = python_files[index]
+            else:
+                print("Invalid number choice. Please try again.")
+                return
+        except ValueError:
+            # If not a number, treat it as a filename
+            if choice in python_files:
+                file_to_run = choice
+            else:
+                print("Invalid filename. Returning to homescreen.")
+                return
 
-    print(f"Running {file_to_run}...")
+        print(f"Running {file_to_run}...")
 
-    # Full path to the selected file
-    file_path = os.path.join(directory, file_to_run)
+        # Full path to the selected file
+        file_path = os.path.join(directory, file_to_run)
 
-    # Using subprocess to run the file
-    gui_features.run_if_safe(file_path)
+        # Using subprocess to run the file
+        gui_features.run_if_safe(file_path)
 
-    # After running, add GUI features (assuming gui_features and model are available)
-    gui_features.add_features(file_path, model)
+        # After running, add GUI features (assuming gui_features and model are available)
+        gui_features.add_features(file_path, model)
 
-    print(f"Features automatically saved to {file_path}")
+        print(f"Features automatically saved")
 
 
 def give_feedback():
@@ -274,11 +283,20 @@ def give_feedback():
         if save_choice == 'y':
             base_name = os.path.splitext(file_to_run)[0]
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            new_filename = f"{base_name}_improved_{timestamp}.py"
+            # Remove old "_improved_YYYYMMDD_HHMMSS" if present
+            match = re.match(r"^(.*?_improved)(?:_\d{8}_\d{6})?$", base_name)
+            if match:
+                new_base_name = match.group(1)
+            else:
+                new_base_name = f"{base_name}_improved"
+
+            new_filename = f"{new_base_name}_{timestamp}.py"
             new_file_path = os.path.join(directory, new_filename)
 
             with open(new_file_path, "w") as f:
                 f.write(new_code)
+
+            f.close()
 
             print(f"Improved code saved to {new_file_path}")
         else:

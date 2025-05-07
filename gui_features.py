@@ -78,7 +78,7 @@ def add_new_features_and_run(model, file_name, features):
     print(clean_response)
 
     if clean_response != "":
-        confirmation = input("\nDo you want to run this newly generated code? (yes/no): ").lower()
+        confirmation = input("\nDo you want to execute this newly generated code? (yes/no): ").lower()
         if confirmation == 'yes':
             write_code_to_file(file_name, clean_response)
             print(f"Running {file_name} safely in a subprocess...")

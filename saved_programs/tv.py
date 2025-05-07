@@ -12,13 +12,16 @@ class GrayTV:
         self.canvas = tk.Canvas(master, width=self.canvas_width, height=self.canvas_height, bg="light blue")  # Set background to a light blue color
         self.canvas.pack()
 
-        self.image = Image.new("RGB", (self.canvas_width, self.canvas_height), "black")
+        self.image = Image.new("RGB", (self.canvas_width, self.canvas_height), (135, 206, 235))  # Set background to sky blue, for the wall
         self.photo = ImageTk.PhotoImage(self.image)
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
         self.draw = ImageDraw.Draw(self.image)  # create ImageDraw object
 
         self.draw_desk()
         self.draw_tv()
+
+        # Add Mac-style buttons
+        self.add_mac_buttons()
 
 
     def draw_tv(self):
@@ -90,6 +93,32 @@ class GrayTV:
         self.photo = ImageTk.PhotoImage(self.image)
         self.canvas.itemconfig(1, image=self.photo)
 
+    def add_mac_buttons(self):
+        """Adds red, yellow, and green buttons."""
+        button_size = 15
+        button_spacing = 5
+        start_x = 10
+        start_y = 10
+
+        # Red button (close)
+        self.create_circle(start_x, start_y, button_size, "red")
+        start_x += button_size + button_spacing
+
+        # Yellow button (minimize)
+        self.create_circle(start_x, start_y, button_size, "yellow")
+        start_x += button_size + button_spacing
+
+        # Green button (maximize)
+        self.create_circle(start_x, start_y, button_size, "green")
+
+
+    def create_circle(self, x, y, r, color):
+        """Helper function to draw a circle on the canvas."""
+        x0 = x - r
+        y0 = y - r
+        x1 = x + r
+        y1 = y + r
+        self.canvas.create_oval(x0, y0, x1, y1, fill=color, outline="black")  # Added outline for better visibility
 
 
 root = tk.Tk()
