@@ -56,6 +56,20 @@ def add_features(file_name, model):
             add_new_features_and_run(model, file_name, features_to_add)
 
 
+def scan_code(code: str) -> str:
+    """
+    Scans code for safety. Returns the same code if safe.
+    If unsafe, returns an empty string and prints why.
+    """
+    scanner = SafeCodeScanner("dummy_path")  # we only use scan_source here
+    is_safe = scanner.scan_source(code)
+    if is_safe:
+        return code
+    else:
+        print("🚫 Unsafe code detected. Aborting write and run.")
+        return ""
+
+
 def add_new_features_and_run(model, file_name, features):
     with open("API_KEY", "r") as f:
         api_key = f.read()
@@ -72,12 +86,12 @@ def add_new_features_and_run(model, file_name, features):
     response = model.generate_content(prompt)
     response_text = response.text
 
-    print(response_text)
     clean_response = clean_up_response(response_text)
-    print("---CLEAN CODE---")
-    print(clean_response)
 
-    if clean_response != "":
+    scanned_code = scan_code(clean_response)
+
+    if scanned_code != "":
+        print("Code scanned and is safe.")
         confirmation = input("\nDo you want to execute this newly generated code? (yes/no): ").lower()
         if confirmation == 'yes':
             write_code_to_file(file_name, clean_response)
@@ -86,7 +100,7 @@ def add_new_features_and_run(model, file_name, features):
         else:
             print("Skipping execution.")
     else:
-        print("Error updating code.")
+        print("Code unsafe, or error generating code")
 
 
 def run_if_safe(file_path):

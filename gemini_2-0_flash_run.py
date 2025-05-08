@@ -71,6 +71,7 @@ def generate_code_and_file():
                  f"Do not look for images on the web or locally. Just draw them."
     elif gui_type == "2":
         game = input("\nWhat game would you like to generate?: ")
+        print(f"Getting a list of the type of games: {game}")
         game_type = game_agent.get_game_type(model, game)
         prompt = f"Write a Python GUI program of the game {game}. Using the version {game_type}" \
                  f"Do not make the program access other files or directories."
@@ -84,6 +85,7 @@ def generate_code_and_file():
         print("Error: Not a valid option. Returning to home-screen.")
         return
 
+    print("Generating code...")
     # Generate content
     response = model.generate_content(prompt)
     response_text = response.text.strip()
@@ -276,11 +278,18 @@ def give_feedback():
     new_code = gui_features.clean_up_response(response_text)
 
     if new_code:
-        print("\n--- UPDATED CODE SUGGESTION ---\n")
-        print(new_code)
+        print("\nSave options:")
+        print("1. Overwrite original file")
+        print("2. Save as a new improved copy")
+        print("3. Do not save")
+        save_choice = input("Enter your choice (1/2/3): ").strip()
 
-        save_choice = input("\nWould you like to save the improved version? (y/n): ").strip().lower()
-        if save_choice == 'y':
+        if save_choice == '1':
+            with open(file_to_run, "w") as new_file:
+                new_file.write(new_code)
+            print(f"Original file '{file_to_run}' has been overwritten with improved code.")
+
+        elif save_choice == '2':
             base_name = os.path.splitext(file_to_run)[0]
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             # Remove old "_improved_YYYYMMDD_HHMMSS" if present
@@ -293,14 +302,17 @@ def give_feedback():
             new_filename = f"{new_base_name}_{timestamp}.py"
             new_file_path = os.path.join(directory, new_filename)
 
-            with open(new_file_path, "w") as f:
-                f.write(new_code)
+            with open(new_file_path, "w") as new_file:
+                new_file.write(new_code)
 
-            f.close()
+            new_file.close()
 
             print(f"Improved code saved to {new_file_path}")
-        else:
+
+        elif save_choice == '3':
             print("Improved code not saved.")
+        else:
+            print("Invalid choice. No action taken.")
     else:
         print("No updated code found in the model's response.")
 

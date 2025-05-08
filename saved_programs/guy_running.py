@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, Canvas
 
-def draw_running_guy_crossing_finish_line(canvas):
+def draw_running_guy_crossing_finish_line(canvas, runner_x_offset, has_crossed_finish_line):
     """Draws a running guy crossing the finish line on the canvas."""
 
     # --- Define Colors and Sizes ---
@@ -43,7 +43,8 @@ def draw_running_guy_crossing_finish_line(canvas):
                                 fill=color1, outline="")
         
     # --- Runner ---
-    runner_x = canvas.winfo_width() * 0.3  # Runner starts at 30% of canvas width
+    runner_start_x = canvas.winfo_width() * 0.3  # Runner starts at 30% of canvas width
+    runner_x = runner_start_x + runner_x_offset #runner moves left and right
     runner_y = track_y_start - head_size - body_length - leg_length // 2  # Calculated y-position based on body parts
 
     # Head
@@ -83,27 +84,82 @@ def draw_running_guy_crossing_finish_line(canvas):
     canvas.create_line(front_leg_x_start, front_leg_y_start, front_leg_x_mid, front_leg_y_mid, width=3, fill=guy_color)
     canvas.create_line(front_leg_x_mid, front_leg_y_mid, front_leg_x_end, front_leg_y_end, width=3, fill=guy_color)
 
+    if has_crossed_finish_line:
+        canvas.create_text(canvas.winfo_width() // 2, canvas.winfo_height() // 2,
+                           text="Finished!", font=("Arial", 30), fill="green")
 
 
 
 def resize_canvas(event):
     """Redraws the image when the canvas is resized."""
-    draw_running_guy_crossing_finish_line(canvas)
+    draw_running_guy_crossing_finish_line(canvas, runner_x_offset, has_crossed_finish_line)
+
+def move_runner():
+    """Moves the runner back and forth, then crosses the finish line."""
+    global runner_x_offset, direction, has_crossed_finish_line, runner_speed
+
+    if not has_crossed_finish_line:
+        runner_x_offset += runner_speed * direction
+
+        # Reverse direction if the runner hits the edge *before* the finish line
+        runner_x_position = canvas.winfo_width() * 0.3 + runner_x_offset
+        finish_line_x = canvas.winfo_width() * 0.8
+
+        if runner_x_position < finish_line_x:  #Only check for direction reversal *before* crossing
+            if runner_x_offset > max_offset:
+                direction = -1
+            elif runner_x_offset < min_offset:
+                direction = 1
+        # Move towards the finish line after reaching a certain point, regardless of direction
+        else:
+            direction = 1 # Ensure the runner moves right toward the finish line
+            runner_speed = 5 #make the runner run faster
+            if runner_x_position > canvas.winfo_width():
+                has_crossed_finish_line = True
+
+
+
+        # Check if the runner has crossed the finish line
+        if runner_x_position > finish_line_x and runner_x_position <= canvas.winfo_width():
+            # Continue moving the runner until they are off the screen
+
+            pass #keep moving until it is off the screen
+        elif runner_x_position > canvas.winfo_width():
+            has_crossed_finish_line = True
+
+        canvas.delete("all")  # Clear the canvas
+        draw_running_guy_crossing_finish_line(canvas, runner_x_offset, has_crossed_finish_line)
+    else:
+        canvas.delete("all") #clear the canvas
+        draw_running_guy_crossing_finish_line(canvas, runner_x_offset, has_crossed_finish_line)
+
+
+    root.after(20, move_runner)  # Repeat every 20 milliseconds (adjust for speed)
+
 
 # --- Create the main window ---
 root = tk.Tk()
 root.title("Running Guy GUI")
 
-# --- Create the Canvas widget ---
+# --- Canvas setup ---
 canvas_width = 800
 canvas_height = 600
 canvas = Canvas(root, width=canvas_width, height=canvas_height, bg="white")
-canvas.pack(fill="both", expand=True)  # Allow canvas to expand to fill the window
+canvas.pack(fill="both", expand=True)
 
-# --- Draw initial image ---
-draw_running_guy_crossing_finish_line(canvas)
+# --- Runner movement variables ---
+runner_x_offset = 0  # Initial offset from the starting position
+runner_speed = 2     # Adjust for faster/slower movement
+direction = 1        # 1 for right, -1 for left
+max_offset = 150    # Maximum offset to the right (increased for crossing)
+min_offset = -100   # Maximum offset to the left
+has_crossed_finish_line = False  # Flag to indicate if the runner crossed the line
 
-# --- Bind resize event to redraw the image ---
+# --- Initial draw and animation start ---
+draw_running_guy_crossing_finish_line(canvas, runner_x_offset, has_crossed_finish_line)
+move_runner() # Start the animation loop
+
+# --- Bind resize event ---
 canvas.bind("<Configure>", resize_canvas)
 
 
