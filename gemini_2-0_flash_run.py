@@ -186,7 +186,8 @@ def run_existing_path():
         print(f"{idx}. {file}")
 
     # Prompt the user to select a file to run
-    choice = input("Which file would you like to run?\nEnter the name or number, q to quit, or h to go to homescreen: ").strip()
+    choice = input("Which file would you like to run?\nEnter the name or number, q to quit, or h"
+                   "to go to homescreen: ").strip()
 
     if choice.lower() == "q":
         quit(1)
